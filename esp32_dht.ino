@@ -6,8 +6,8 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-#include <Adafruit_GFX.h>    // Core graphics library
-#include <Adafruit_ST7735.h> // Hardware-specific library for ST7735
+#include <Adafruit_GFX.h>     // Core graphics library
+#include <Adafruit_ILI9341.h> // Hardware-specific library for ILI9341
 #include <SPI.h>
 
 #include "esp32_dht_bmp.h"
@@ -32,13 +32,13 @@ float Humidity;
 float TemperatureOutdoor;
 
 // #define TFT_CS 12 //SS/CS
-#define TFT_RST 9
+#define TFT_RST 4
 #define TFT_DC 3
 // #define TFT_MOSI 11  // Data out
 // #define TFT_SCL 7  // Clock out
 
 // Adafruit_ST7735 tft = Adafruit_ST7735(SS,  TFT_DC, MOSI, SCK, TFT_RST);
-Adafruit_ST7735 tft = Adafruit_ST7735(SS, TFT_DC, TFT_RST);
+Adafruit_ILI9341 tft = Adafruit_ILI9341(SS, TFT_DC, TFT_RST);
 
 uint8_t oneWireBus = 10;
 OneWire oneWire(oneWireBus);
@@ -59,9 +59,10 @@ void setup()
   pinMode(DHTPin, INPUT);
   dht.begin();
 
-  tft.initR(INITR_BLACKTAB);
+  tft.begin();
+  tft.fillScreen(ILI9341_BLACK);
   tft.setRotation(1);
-  tft.fillScreen(ST77XX_BLACK);
+  // tft.fillScreen(ILI9341_BLACK);
   tft.setCursor(0, 0);
   // tft.cp437(true);
   tft.setTextWrap(true);
@@ -73,7 +74,11 @@ void setup()
 
   delay(500);
 
-  tft.fillScreen(ST77XX_BLACK);
+  //tft.setTextColor(ILI9341_BLUE);
+  //tft.print("Hello world");
+  //Serial.println(String(SS) + "  " + String(SCK)+ "  " + String(MOSI)+ "  " + String(MISO));
+
+  tft.fillScreen(ILI9341_BLACK);
   tft.setTextSize(2);
 
   loopTask();
@@ -179,8 +184,8 @@ void loopTask()
     currentImage = 0;
   }
 
-  drawText("Temp: " + String(Temperature) + "\367C", (Temperature >= 19 && Temperature <= 23) ? ST77XX_GREEN : ST77XX_RED);
-  drawText("Wilg: " + String(Humidity) + " %", (Humidity >= 35 && Humidity <= 60) ? ST77XX_GREEN : ST77XX_RED);
+  drawText("Temp: " + String(Temperature) + "\367C", (Temperature >= 19 && Temperature <= 23) ? ILI9341_GREEN : ILI9341_RED);
+  drawText("Wilg: " + String(Humidity) + " %", (Humidity >= 35 && Humidity <= 60) ? ILI9341_GREEN : ILI9341_RED);
   drawText("Zewn: " + String(TemperatureOutdoor) + "\367C");
 }
 
@@ -208,8 +213,8 @@ void turnOffLamp()
 
 void drawText(String text)
 {
-  // tft.setTextColor(ST77XX_WHITE, 0x0000);
-  tft.setTextColor(ST77XX_WHITE);
+  // tft.setTextColor(ILI9341_WHITE, 0x0000);
+  tft.setTextColor(ILI9341_WHITE);
   tft.println(text);
 }
 
@@ -222,7 +227,7 @@ void drawText(String text, uint16_t color)
 
 void drawImage()
 {
-  int h = 128, w = 160, row, col, buffidx = 0;
+  int h = 240, w = 320, row = 0, col = 0, buffidx = 0;
   for (row = 0; row < h; row++)
   { // For each scanline...
     for (col = 0; col < w; col++)
@@ -230,12 +235,12 @@ void drawImage()
       // To read from Flash Memory, pgm_read_XXX is required.
       // Since image is stored as uint16_t, pgm_read_word is used as it uses 16bit address
 
-      if (currentImage == 0)
+      //if (currentImage == 0)
         tft.drawPixel(col, row, evive_in_hand[buffidx]);
-      else if (currentImage == 1)
-        tft.drawPixel(col, row, evive_in_hand2[buffidx]);
-      else
-        tft.drawPixel(col, row, bejba[buffidx]);
+      //else if (currentImage == 1)
+      //  tft.drawPixel(col, row, evive_in_hand2[buffidx]);
+     // else
+      //  tft.drawPixel(col, row, bejba[buffidx]);
       buffidx++;
     } // end pixel
   }
