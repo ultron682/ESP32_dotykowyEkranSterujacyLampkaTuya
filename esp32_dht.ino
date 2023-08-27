@@ -38,7 +38,8 @@ float TemperatureOutdoor;
 // #define TFT_SCL 7  // Clock out
 
 // Adafruit_ST7735 tft = Adafruit_ST7735(SS,  TFT_DC, MOSI, SCK, TFT_RST);
-Adafruit_ILI9341 tft = Adafruit_ILI9341(SS, TFT_DC, TFT_RST);
+Adafruit_ILI9341 tft = Adafruit_ILI9341(SS, TFT_DC);
+//Adafruit_ILI9341 tft = Adafruit_ILI9341(SS, TFT_DC, MOSI, SCK, TFT_RST, MISO);
 
 uint8_t oneWireBus = 10;
 OneWire oneWire(oneWireBus);
@@ -60,13 +61,14 @@ void setup()
   dht.begin();
 
   tft.begin();
+  tft.setRotation(2);
   tft.fillScreen(ILI9341_BLACK);
-  tft.setRotation(1);
+  //tft.setRotation(1);
   // tft.fillScreen(ILI9341_BLACK);
-  tft.setCursor(0, 0);
+  //tft.setCursor(0, 0);
   // tft.cp437(true);
   tft.setTextWrap(true);
-  tft.setTextSize(1);
+  tft.setTextSize(2);
 
   WiFi.onEvent(onWiFiEvent);
   connectWifi(false);
@@ -99,7 +101,7 @@ void loop()
 
   if (millis() - previousMillis >= 30000)
   {
-    setCpuFrequencyMhz(240); // CPU
+    //setCpuFrequencyMhz(240); // CPU
     if (connectWifi(false))
     {
       loopTask();
@@ -109,7 +111,7 @@ void loop()
     {
       ESP.restart();
     }
-    setCpuFrequencyMhz(40); // CPU
+    //setCpuFrequencyMhz(40); // CPU
   }
 
   delay(300);
@@ -168,7 +170,7 @@ void loopTask()
 {
   getSensorReadings();
   sendTemperatureToThingSpeak();
-  tft.setCursor(0, 80);
+  tft.setCursor(0, 0);
 
   drawImage();
   if (currentImage == 0)
