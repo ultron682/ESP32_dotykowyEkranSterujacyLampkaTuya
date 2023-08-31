@@ -14,10 +14,6 @@
 
 #include "esp32_dht_bmp.h"
 
-//
-// #include <TFT_eSPI.h> // Graphics and font library for ST7735 driver chip
-// #include <SPI.h>
-
 const String ssid = "Inez 2,4";
 const String password = "56964592";
 
@@ -33,15 +29,22 @@ float Temperature;
 float Humidity;
 float TemperatureOutdoor;
 
-// #define TFT_CS 12 //SS/CS
 #define TFT_RST 4
 #define TFT_DC 5
-// #define TFT_MOSI 11  // Data out
-// #define TFT_SCL 7  // Clock out
 
-// Adafruit_ST7735 tft = Adafruit_ST7735(SS,  TFT_DC, MOSI, SCK, TFT_RST);
-Adafruit_ST7789 tft = Adafruit_ST7789(SS, TFT_DC, TFT_RST);
-//Adafruit_ILI9341 tft = Adafruit_ILI9341(SS, TFT_DC, MOSI, SCK, TFT_RST, MISO);
+TFT_eSPI tft = TFT_eSPI();
+#define CALIBRATION_FILE "/TouchCalData1"
+#define REPEAT_CAL false
+
+ButtonWidget btnL = ButtonWidget(&tft);
+ButtonWidget btnR = ButtonWidget(&tft);
+
+#define BUTTON_W 100
+#define BUTTON_H 50
+
+ButtonWidget *btn[] = {&btnL, &btnR};
+;
+uint8_t buttonCount = sizeof(btn) / sizeof(btn[0]);
 
 uint8_t oneWireBus = 10;
 OneWire oneWire(oneWireBus);
@@ -62,30 +65,12 @@ void setup()
   pinMode(DHTPin, INPUT);
   dht.begin();
 
-  tft.init(240,320);
-  //tft.invertDisplay(false);
- // tft.setRotation(0);
-  tft.fillScreen(ST77XX_BLACK);
-
-
-
- x = tft.readcommand8(ILI9341_RDSELFDIAG);
-  Serial.print("Self Diagnostic: 0x"); Serial.println(x, HEX); 
-  x = tft.readcommand8(ILI9341_RDID1);
-  Serial.print(" RDID1: 0x"); Serial.println(x, HEX);
-  x = tft.readcommand8(ILI9341_RDID2);
-  Serial.print(" RDID2: 0x"); Serial.println(x, HEX);
-  x = tft.readcommand8(ILI9341_RDID3);
-  Serial.print(" RDID3: 0x"); Serial.println(x, HEX);
-
-
-
-  //tft.setRotation(1);
-  // tft.fillScreen(ILI9341_BLACK);
-  //tft.setCursor(0, 0);
-  // tft.cp437(true);
+  tft.begin();
+  tft.setRotation(3);
+  tft.fillScreen(TFT_BLACK);
+  tft.setFreeFont(FF18);
   tft.setTextWrap(true);
-  tft.setTextSize(2);
+  tft.setTextSize(1);
 
   WiFi.onEvent(onWiFiEvent);
   connectWifi(false);
@@ -93,45 +78,220 @@ void setup()
 
   delay(500);
 
-  //tft.setTextColor(ILI9341_BLUE);
-  //tft.print("Hello world");
-  Serial.println(String(SS) + "  " + String(SCK)+ "  " + String(MOSI)+ "  " + String(MISO));
-
-  tft.fillScreen(ST77XX_BLACK);
-  tft.setTextSize(2);
-
   loopTask();
+
+  // Calibrate the touch screen and retrieve the scaling factors
+  touch_calibrate();
+  initButtons();
 }
 
 void loop()
 {
-  if (digitalRead(33) == LOW && currentState == 0)
-  {
-    currentState = 1;
-    turnOnLamp();
-  }
-  else if (digitalRead(33) == HIGH && currentState == 1)
-  {
-    currentState = 0;
-    turnOffLamp();
-  }
+  // if (digitalRead(33) == LOW && currentState == 0)
+  // {
+  //   currentState = 1;
+  //   turnOnLEDS();
+  // }
+  // else if (digitalRead(33) == HIGH && currentState == 1)
+  // {
+  //   currentState = 0;
+  //   turnOffLEDS();
+  // }
 
-  if (millis() - previousMillis >= 5000 /*30000*/)
+  if (millis() - previousMillis >= 30000)
   {
-    //setCpuFrequencyMhz(240); // CPU
-    if (connectWifi(false))
-    {
+    // // setCpuFrequencyMhz(240); // CPU
+     if (connectWifi(false))
+     {
       loopTask();
       WiFi.mode(WIFI_OFF);
+     }
+    // else
+    // {
+    //   ESP.restart();
+    // }
+    // setCpuFrequencyMhz(40); // CPU
+  }
+
+  static uint32_t scanTime = millis();
+  uint16_t t_x = 9999, t_y = 9999; // To store the touch coordinates
+
+  // Scan keys every 50ms at most
+  if (millis() - scanTime >= 50)
+  {
+    // Pressed will be set true if there is a valid touch on the screen
+    bool pressed = tft.getTouch(&t_x, &t_y);
+    scanTime = millis();
+    for (uint8_t b = 0; b < buttonCount; b++)
+    {
+      if (pressed)
+      {
+        if (btn[b]->contains(t_x, t_y))
+        {
+          btn[b]->press(true);
+          btn[b]->pressAction();
+        }
+      }
+      else
+      {
+        btn[b]->press(false);
+        btn[b]->releaseAction();
+      }
+    }
+  }
+}
+
+void btnL_pressAction(void)
+{
+  if (btnL.justPressed())
+  {
+    Serial.println("Left button just pressed");
+    btnL.drawSmoothButton(true);
+
+    turnOnLEDS();
+  }
+}
+
+void btnL_releaseAction(void)
+{
+  static uint32_t waitTime = 1000;
+  if (btnL.justReleased())
+  {
+    Serial.println("Left button just released");
+    btnL.drawSmoothButton(false);
+    btnL.setReleaseTime(millis());
+    waitTime = 10000;
+  }
+  else
+  {
+    if (millis() - btnL.getReleaseTime() >= waitTime)
+    {
+      waitTime = 1000;
+      btnL.setReleaseTime(millis());
+      btnL.drawSmoothButton(btnL.getState());
+    }
+  }
+}
+
+void btnR_pressAction(void)
+{
+  if (btnR.justPressed())
+  {
+    Serial.println("Left button just pressed");
+    btnR.drawSmoothButton(true);
+
+    turnOffLEDS();
+  }
+}
+
+void btnR_releaseAction(void)
+{
+  static uint32_t waitTime = 1000;
+  if (btnR.justReleased())
+  {
+    Serial.println("Left button just released");
+    btnR.drawSmoothButton(false);
+    btnR.setReleaseTime(millis());
+    waitTime = 10000;
+  }
+  else
+  {
+    if (millis() - btnR.getReleaseTime() >= waitTime)
+    {
+      waitTime = 1000;
+      btnR.setReleaseTime(millis());
+      btnR.drawSmoothButton(btnR.getState());
+    }
+  }
+}
+
+void initButtons()
+{
+  uint16_t x = (tft.width() - BUTTON_W) - 3;
+  uint16_t y =  3;
+  btnL.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_GREEN, TFT_BLACK, "ON", 1);
+  btnL.setPressAction(btnL_pressAction);
+  btnL.setReleaseAction(btnL_releaseAction);
+  btnL.drawSmoothButton(false, 2, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
+
+  y =  BUTTON_H + 6;
+  btnR.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_RED, TFT_BLACK, "OFF", 1);
+  btnR.setPressAction(btnR_pressAction);
+  btnR.setReleaseAction(btnR_releaseAction);
+  btnR.drawSmoothButton(false, 2, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
+}
+
+void touch_calibrate()
+{
+  uint16_t calData[5];
+  uint8_t calDataOK = 0;
+
+  // check file system exists
+  if (!LittleFS.begin())
+  {
+    Serial.println("Formating file system");
+    LittleFS.format();
+    LittleFS.begin();
+  }
+
+  // check if calibration file exists and size is correct
+  if (LittleFS.exists(CALIBRATION_FILE))
+  {
+    if (REPEAT_CAL)
+    {
+      // Delete if we want to re-calibrate
+      LittleFS.remove(CALIBRATION_FILE);
     }
     else
     {
-      ESP.restart();
+      File f = LittleFS.open(CALIBRATION_FILE, "r");
+      if (f)
+      {
+        if (f.readBytes((char *)calData, 14) == 14)
+          calDataOK = 1;
+        f.close();
+      }
     }
-    //setCpuFrequencyMhz(40); // CPU
   }
 
-  delay(300);
+  if (calDataOK && !REPEAT_CAL)
+  {
+    // calibration data valid
+    tft.setTouch(calData);
+  }
+  else
+  {
+    // data not valid so recalibrate
+    tft.fillScreen(TFT_BLACK);
+    tft.setCursor(20, 0);
+    tft.setTextFont(2);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
+    tft.println("Touch corners as indicated");
+
+    tft.setTextFont(1);
+    tft.println();
+
+    if (REPEAT_CAL)
+    {
+      tft.setTextColor(TFT_RED, TFT_BLACK);
+      tft.println("Set REPEAT_CAL to false to stop this running again!");
+    }
+
+    tft.calibrateTouch(calData, TFT_MAGENTA, TFT_BLACK, 15);
+
+    tft.setTextColor(TFT_GREEN, TFT_BLACK);
+    tft.println("Calibration complete!");
+
+    // store data
+    File f = LittleFS.open(CALIBRATION_FILE, "w");
+    if (f)
+    {
+      f.write((const unsigned char *)calData, 14);
+      f.close();
+    }
+  }
 }
 
 void onWiFiEvent(WiFiEvent_t event)
@@ -187,7 +347,7 @@ void loopTask()
 {
   getSensorReadings();
   sendTemperatureToThingSpeak();
-  tft.setCursor(0, 0);
+  tft.setCursor(0, 185);
 
   drawImage();
   if (currentImage == 0)
@@ -203,12 +363,12 @@ void loopTask()
     currentImage = 0;
   }
 
-  drawText("Temp: " + String(Temperature) + "\367C", (Temperature >= 19 && Temperature <= 23) ? ILI9341_GREEN : ILI9341_RED);
-  drawText("Wilg: " + String(Humidity) + " %", (Humidity >= 35 && Humidity <= 60) ? ILI9341_GREEN : ILI9341_RED);
+  drawText("Temp: " + String(Temperature) + "\367C", (Temperature >= 19 && Temperature <= 23) ? TFT_GREEN : TFT_RED);
+  drawText("Wilg: " + String(Humidity) + " %", (Humidity >= 35 && Humidity <= 60) ? TFT_GREEN : TFT_RED);
   drawText("Zewn: " + String(TemperatureOutdoor) + "\367C");
 }
 
-void turnOnLamp()
+void turnOnLEDS()
 {
   digitalWrite(34, HIGH);
   delay(70);
@@ -219,7 +379,7 @@ void turnOnLamp()
   digitalWrite(34, LOW);
 }
 
-void turnOffLamp()
+void turnOffLEDS()
 {
   digitalWrite(34, HIGH);
   delay(70);
@@ -233,7 +393,7 @@ void turnOffLamp()
 void drawText(String text)
 {
   // tft.setTextColor(ILI9341_WHITE, 0x0000);
-  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextColor(TFT_WHITE);
   tft.println(text);
 }
 
@@ -254,11 +414,11 @@ void drawImage()
       // To read from Flash Memory, pgm_read_XXX is required.
       // Since image is stored as uint16_t, pgm_read_word is used as it uses 16bit address
 
-      //if (currentImage == 0)
-        tft.drawPixel(col, row, evive_in_hand[buffidx]);
-      //else if (currentImage == 1)
-      //  tft.drawPixel(col, row, evive_in_hand2[buffidx]);
-     // else
+      // if (currentImage == 0)
+      tft.drawPixel(col, row, evive_in_hand[buffidx]);
+      // else if (currentImage == 1)
+      //   tft.drawPixel(col, row, evive_in_hand2[buffidx]);
+      // else
       //  tft.drawPixel(col, row, bejba[buffidx]);
       buffidx++;
     } // end pixel
