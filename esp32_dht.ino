@@ -6,6 +6,7 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+#include <Adafruit_ST7789.h>
 #include <Adafruit_GFX.h>     // Core graphics library
 #include <Adafruit_ILI9341.h> // Hardware-specific library for ILI9341
 #include <SPI.h>
@@ -33,12 +34,12 @@ float TemperatureOutdoor;
 
 // #define TFT_CS 12 //SS/CS
 #define TFT_RST 4
-#define TFT_DC 3
+#define TFT_DC 5
 // #define TFT_MOSI 11  // Data out
 // #define TFT_SCL 7  // Clock out
 
 // Adafruit_ST7735 tft = Adafruit_ST7735(SS,  TFT_DC, MOSI, SCK, TFT_RST);
-Adafruit_ILI9341 tft = Adafruit_ILI9341(SS, TFT_DC);
+Adafruit_ILI9341 tft = Adafruit_ILI9341(SS, TFT_DC, TFT_RST);
 //Adafruit_ILI9341 tft = Adafruit_ILI9341(SS, TFT_DC, MOSI, SCK, TFT_RST, MISO);
 
 uint8_t oneWireBus = 10;
@@ -60,8 +61,9 @@ void setup()
   pinMode(DHTPin, INPUT);
   dht.begin();
 
-  tft.begin();
-  tft.setRotation(2);
+  tft.begin(240, 320);
+  tft.invertDisplay(false);
+ // tft.setRotation(0);
   tft.fillScreen(ILI9341_BLACK);
   //tft.setRotation(1);
   // tft.fillScreen(ILI9341_BLACK);
@@ -78,7 +80,7 @@ void setup()
 
   //tft.setTextColor(ILI9341_BLUE);
   //tft.print("Hello world");
-  //Serial.println(String(SS) + "  " + String(SCK)+ "  " + String(MOSI)+ "  " + String(MISO));
+  Serial.println(String(SS) + "  " + String(SCK)+ "  " + String(MOSI)+ "  " + String(MISO));
 
   tft.fillScreen(ILI9341_BLACK);
   tft.setTextSize(2);
@@ -99,7 +101,7 @@ void loop()
     turnOffLamp();
   }
 
-  if (millis() - previousMillis >= 30000)
+  if (millis() - previousMillis >= 5000 /*30000*/)
   {
     //setCpuFrequencyMhz(240); // CPU
     if (connectWifi(false))
