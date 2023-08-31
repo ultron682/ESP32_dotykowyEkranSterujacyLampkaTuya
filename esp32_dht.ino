@@ -6,10 +6,11 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-#include <Adafruit_ST7789.h>
-#include <Adafruit_GFX.h>     // Core graphics library
-#include <Adafruit_ILI9341.h> // Hardware-specific library for ILI9341
-#include <SPI.h>
+#include <FS.h>
+#include "Free_Fonts.h" // Include the header file attached to this sketch
+
+#include <TFT_eSPI.h>    // Hardware-specific library
+#include <TFT_eWidget.h> // Widget library
 
 #include "esp32_dht_bmp.h"
 
@@ -39,7 +40,7 @@ float TemperatureOutdoor;
 // #define TFT_SCL 7  // Clock out
 
 // Adafruit_ST7735 tft = Adafruit_ST7735(SS,  TFT_DC, MOSI, SCK, TFT_RST);
-Adafruit_ILI9341 tft = Adafruit_ILI9341(SS, TFT_DC, TFT_RST);
+Adafruit_ST7789 tft = Adafruit_ST7789(SS, TFT_DC, TFT_RST);
 //Adafruit_ILI9341 tft = Adafruit_ILI9341(SS, TFT_DC, MOSI, SCK, TFT_RST, MISO);
 
 uint8_t oneWireBus = 10;
@@ -61,10 +62,24 @@ void setup()
   pinMode(DHTPin, INPUT);
   dht.begin();
 
-  tft.begin(240, 320);
-  tft.invertDisplay(false);
+  tft.init(240,320);
+  //tft.invertDisplay(false);
  // tft.setRotation(0);
-  tft.fillScreen(ILI9341_BLACK);
+  tft.fillScreen(ST77XX_BLACK);
+
+
+
+ x = tft.readcommand8(ILI9341_RDSELFDIAG);
+  Serial.print("Self Diagnostic: 0x"); Serial.println(x, HEX); 
+  x = tft.readcommand8(ILI9341_RDID1);
+  Serial.print(" RDID1: 0x"); Serial.println(x, HEX);
+  x = tft.readcommand8(ILI9341_RDID2);
+  Serial.print(" RDID2: 0x"); Serial.println(x, HEX);
+  x = tft.readcommand8(ILI9341_RDID3);
+  Serial.print(" RDID3: 0x"); Serial.println(x, HEX);
+
+
+
   //tft.setRotation(1);
   // tft.fillScreen(ILI9341_BLACK);
   //tft.setCursor(0, 0);
@@ -82,7 +97,7 @@ void setup()
   //tft.print("Hello world");
   Serial.println(String(SS) + "  " + String(SCK)+ "  " + String(MOSI)+ "  " + String(MISO));
 
-  tft.fillScreen(ILI9341_BLACK);
+  tft.fillScreen(ST77XX_BLACK);
   tft.setTextSize(2);
 
   loopTask();
