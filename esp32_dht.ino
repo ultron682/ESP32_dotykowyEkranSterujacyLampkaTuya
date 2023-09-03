@@ -39,7 +39,7 @@ TFT_eSPI tft = TFT_eSPI();
 ButtonWidget btnL = ButtonWidget(&tft);
 ButtonWidget btnR = ButtonWidget(&tft);
 
-#define BUTTON_W 100
+#define BUTTON_W 50
 #define BUTTON_H 50
 
 ButtonWidget *btn[] = {&btnL, &btnR};
@@ -68,7 +68,7 @@ void setup()
   tft.begin();
   tft.setRotation(3);
   tft.fillScreen(TFT_BLACK);
-  tft.setFreeFont(FF18);
+  //tft.setFreeFont(FF18);
   tft.setTextWrap(true);
   tft.setTextSize(1);
 
@@ -87,25 +87,25 @@ void setup()
 
 void loop()
 {
-  // if (digitalRead(33) == LOW && currentState == 0)
-  // {
-  //   currentState = 1;
-  //   turnOnLEDS();
-  // }
-  // else if (digitalRead(33) == HIGH && currentState == 1)
-  // {
-  //   currentState = 0;
-  //   turnOffLEDS();
-  // }
+  if (digitalRead(33) == LOW && currentState == 0)
+  {
+    currentState = 1;
+    turnOnLEDS();
+  }
+  else if (digitalRead(33) == HIGH && currentState == 1)
+  {
+    currentState = 0;
+    turnOffLEDS();
+  }
 
   if (millis() - previousMillis >= 30000)
   {
     // // setCpuFrequencyMhz(240); // CPU
-     if (connectWifi(false))
-     {
+    if (connectWifi(false))
+    {
       loopTask();
       WiFi.mode(WIFI_OFF);
-     }
+    }
     // else
     // {
     //   ESP.restart();
@@ -189,7 +189,7 @@ void btnR_releaseAction(void)
   static uint32_t waitTime = 1000;
   if (btnR.justReleased())
   {
-    Serial.println("Left button just released");
+    Serial.println("Right button just released");
     btnR.drawSmoothButton(false);
     btnR.setReleaseTime(millis());
     waitTime = 10000;
@@ -208,14 +208,14 @@ void btnR_releaseAction(void)
 void initButtons()
 {
   uint16_t x = (tft.width() - BUTTON_W) - 3;
-  uint16_t y =  3;
-  btnL.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_GREEN, TFT_BLACK, "ON", 1);
+  uint16_t y = 3;
+  btnL.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_GREEN, TFT_WHITE, "", 1);
   btnL.setPressAction(btnL_pressAction);
   btnL.setReleaseAction(btnL_releaseAction);
   btnL.drawSmoothButton(false, 2, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
 
-  y =  BUTTON_H + 6;
-  btnR.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_RED, TFT_BLACK, "OFF", 1);
+  y = BUTTON_H + 6;
+  btnR.initButtonUL(x, y, BUTTON_W, BUTTON_H, TFT_WHITE, TFT_RED, TFT_WHITE, "", 1);
   btnR.setPressAction(btnR_pressAction);
   btnR.setReleaseAction(btnR_releaseAction);
   btnR.drawSmoothButton(false, 2, TFT_BLACK); // 3 is outline width, TFT_BLACK is the surrounding background colour for anti-aliasing
@@ -294,6 +294,20 @@ void touch_calibrate()
   }
 }
 
+void printLocalTime()
+{
+  tft.setCursor(0, 20);
+  struct tm timeinfo;
+
+  if (!getLocalTime(&timeinfo))
+  {
+    tft.print("Failed to obtain time");
+    return;
+  }
+
+  tft.print(&timeinfo, "%H:%M:%S");
+}
+
 void onWiFiEvent(WiFiEvent_t event)
 {
   switch (event)
@@ -339,15 +353,18 @@ bool connectWifi(bool quiet)
     timeoutWifiConnect++;
   }
 
+  if (!quiet)
+    tft.print(" OK");
   digitalWrite(LED_BUILTIN, LOW);
   return true;
 }
 
 void loopTask()
 {
+  previousMillis = millis();
+
   getSensorReadings();
   sendTemperatureToThingSpeak();
-  tft.setCursor(0, 185);
 
   drawImage();
   if (currentImage == 0)
@@ -363,9 +380,10 @@ void loopTask()
     currentImage = 0;
   }
 
-  drawText("Temp: " + String(Temperature) + "\367C", (Temperature >= 19 && Temperature <= 23) ? TFT_GREEN : TFT_RED);
-  drawText("Wilg: " + String(Humidity) + " %", (Humidity >= 35 && Humidity <= 60) ? TFT_GREEN : TFT_RED);
-  drawText("Zewn: " + String(TemperatureOutdoor) + "\367C");
+  tft.setCursor(0, 180);
+  drawText("Temp: " + String(Temperature, 1) + "\367C", (Temperature >= 19 && Temperature <= 23) ? TFT_WHITE : TFT_RED);
+  drawText("Wilg:   " + String(Humidity, 1) + "%", (Humidity >= 35 && Humidity <= 60) ? TFT_WHITE : TFT_RED);
+  drawText("Zewn: " + String(TemperatureOutdoor, 1) + "\367C");
 }
 
 void turnOnLEDS()
@@ -373,7 +391,7 @@ void turnOnLEDS()
   digitalWrite(34, HIGH);
   delay(70);
   digitalWrite(34, LOW);
-  delay(400);
+  delay(350);
   digitalWrite(34, HIGH);
   delay(70);
   digitalWrite(34, LOW);
@@ -392,37 +410,21 @@ void turnOffLEDS()
 
 void drawText(String text)
 {
-  // tft.setTextColor(ILI9341_WHITE, 0x0000);
   tft.setTextColor(TFT_WHITE);
   tft.println(text);
 }
 
 void drawText(String text, uint16_t color)
 {
-  // tft.setTextColor(color, 0x0000);
   tft.setTextColor(color);
   tft.println(text);
 }
 
 void drawImage()
 {
-  int h = 240, w = 320, row = 0, col = 0, buffidx = 0;
-  for (row = 0; row < h; row++)
-  { // For each scanline...
-    for (col = 0; col < w; col++)
-    { // For each pixel...
-      // To read from Flash Memory, pgm_read_XXX is required.
-      // Since image is stored as uint16_t, pgm_read_word is used as it uses 16bit address
-
-      // if (currentImage == 0)
-      tft.drawPixel(col, row, evive_in_hand[buffidx]);
-      // else if (currentImage == 1)
-      //   tft.drawPixel(col, row, evive_in_hand2[buffidx]);
-      // else
-      //  tft.drawPixel(col, row, bejba[buffidx]);
-      buffidx++;
-    } // end pixel
-  }
+  tft.setSwapBytes(true);
+  tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : currentImage == 1 ? image_witcher
+                                                                                   : image_bejb2);
 }
 
 void getSensorReadings()
