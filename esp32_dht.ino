@@ -68,7 +68,7 @@ void setup()
   tft.begin();
   tft.setRotation(3);
   tft.fillScreen(TFT_BLACK);
-  //tft.setFreeFont(FF18);
+  tft.setFreeFont(FF18);
   tft.setTextWrap(true);
   tft.setTextSize(1);
 
@@ -294,20 +294,6 @@ void touch_calibrate()
   }
 }
 
-void printLocalTime()
-{
-  tft.setCursor(0, 20);
-  struct tm timeinfo;
-
-  if (!getLocalTime(&timeinfo))
-  {
-    tft.print("Failed to obtain time");
-    return;
-  }
-
-  tft.print(&timeinfo, "%H:%M:%S");
-}
-
 void onWiFiEvent(WiFiEvent_t event)
 {
   switch (event)
@@ -332,7 +318,7 @@ bool connectWifi(bool quiet)
     return true;
 
   timeoutWifiConnect = 0;
-  tft.setCursor(0, 0);
+  tft.setCursor(0, 20);
 
   digitalWrite(LED_BUILTIN, HIGH);
 
@@ -368,17 +354,11 @@ void loopTask()
 
   drawImage();
   if (currentImage == 0)
-  {
     currentImage = 1;
-  }
   else if (currentImage == 1)
-  {
     currentImage = 2;
-  }
   else
-  {
     currentImage = 0;
-  }
 
   tft.setCursor(0, 180);
   drawText("Temp: " + String(Temperature, 1) + "\367C", (Temperature >= 19 && Temperature <= 23) ? TFT_WHITE : TFT_RED);
