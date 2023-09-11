@@ -43,7 +43,6 @@ ButtonWidget btnR = ButtonWidget(&tft);
 #define BUTTON_H 50
 
 ButtonWidget *btn[] = {&btnL, &btnR};
-;
 uint8_t buttonCount = sizeof(btn) / sizeof(btn[0]);
 
 uint8_t oneWireBus = 10;
@@ -74,7 +73,7 @@ void setup()
 
   WiFi.onEvent(onWiFiEvent);
   connectWifi(false);
-  sendWakeOnToThingSpeak();
+  sendDataToThingSpeak("api_key=" + apiKey + "&field5=" + String(millis())); // Wake up data
 
   delay(500);
 
@@ -106,10 +105,11 @@ void loop()
       loopTask();
       WiFi.mode(WIFI_OFF);
     }
-    // else
-    // {
-    //   ESP.restart();
-    // }
+    else
+    {
+      //ESP.restart();
+      previousMillis = millis();
+    }
     // setCpuFrequencyMhz(40); // CPU
   }
 
@@ -349,10 +349,11 @@ void loopTask()
 {
   previousMillis = millis();
 
-  getSensorReadings();
-  sendTemperatureToThingSpeak();
+  readSensors();
+  sendDataToThingSpeak("api_key=" + apiKey + "&field1=" + String(Temperature, 1) + "&field2=" + String(Humidity, 1) + "&field3=" + String(TemperatureOutdoor, 1));
 
   drawImage();
+
   if (currentImage == 0)
     currentImage = 1;
   else if (currentImage == 1)
@@ -402,12 +403,12 @@ void drawText(String text, uint16_t color)
 
 void drawImage()
 {
-  tft.setSwapBytes(true);
+  //tft.setSwapBytes(true);
   tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : currentImage == 1 ? image_witcher
                                                                                    : image_bejb2);
 }
 
-void getSensorReadings()
+void readSensors()
 {
   Temperature = dht.readTemperature();
   Humidity = dht.readHumidity();
@@ -418,7 +419,7 @@ void getSensorReadings()
   // Serial.println(String(Temperature) + " " + String(Humidity) + " " + String(TemperatureOutdoor));
 }
 
-bool sendWakeOnToThingSpeak()
+bool sendDataToThingSpeak(String requestData)
 {
   if (WiFi.status() == WL_CONNECTED)
   {
@@ -426,40 +427,10 @@ bool sendWakeOnToThingSpeak()
     HTTPClient http;
 
     http.begin(client, serverName);
+
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-    String httpRequestData = "api_key=" + apiKey + "&field5=" + String(millis());
-    int httpResponseCode = http.POST(httpRequestData);
+    int httpResponseCode = http.POST(requestData);
 
-    http.end();
-    return true;
-  }
-  else
-  {
-    return false;
-  }
-}
-
-bool sendTemperatureToThingSpeak()
-{
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    WiFiClient client;
-    HTTPClient http;
-
-    // Your Domain name with URL path or IP address with path
-    http.begin(client, serverName);
-
-    // Specify content-type header
-    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-    // Data to send with HTTP POST
-    String httpRequestData = "api_key=" + apiKey + "&field1=" + String(Temperature) + "&field2=" + String(Humidity) + "&field3=" + String(TemperatureOutdoor);
-    // Send HTTP POST request
-    int httpResponseCode = http.POST(httpRequestData);
-
-    // Serial.print("HTTP Response code: ");
-    // Serial.println(httpResponseCode);
-
-    // Free resources
     http.end();
 
     return true;
