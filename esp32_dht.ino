@@ -40,7 +40,7 @@ ButtonWidget btnL = ButtonWidget(&tft);
 ButtonWidget btnR = ButtonWidget(&tft);
 
 #define BUTTON_W 50
-#define BUTTON_H 50
+#define BUTTON_H 116
 
 ButtonWidget *btn[] = {&btnL, &btnR};
 uint8_t buttonCount = sizeof(btn) / sizeof(btn[0]);
@@ -97,7 +97,7 @@ void loop()
     turnOffLEDS();
   }
 
-  if (millis() - previousMillis >= 30000)
+  if (millis() - previousMillis >= 60000)
   {
     // // setCpuFrequencyMhz(240); // CPU
     if (connectWifi(false))
