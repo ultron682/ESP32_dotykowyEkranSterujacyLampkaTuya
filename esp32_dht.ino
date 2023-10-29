@@ -17,6 +17,9 @@
 const String ssid = "Inez 2,4";
 const String password = "56964592";
 
+// const String ssid = "PIETRO 1";
+// const String password = "lublinaleksandrajaworowskiego14";
+
 const char *serverName = "http://api.thingspeak.com/update";
 unsigned long myChannelNumber = 2058504;
 String apiKey = "3E55L1C2B988LHQJ";
@@ -54,6 +57,8 @@ unsigned long previousMillis = 0;
 short currentImage = 2;
 short currentState = 1;
 
+
+
 void setup() {
   pinMode(33, INPUT_PULLUP);
   pinMode(34, OUTPUT);
@@ -85,23 +90,15 @@ void setup() {
 
 void loop() {
   if (digitalRead(33) == LOW && currentState == 0) {
-    currentState = 1;
     turnOnLEDS();
   } else if (digitalRead(33) == HIGH && currentState == 1) {
-    currentState = 0;
     turnOffLEDS();
   }
 
   if (millis() - previousMillis >= 60000) {
-    // // setCpuFrequencyMhz(240); // CPU
-    if (connectWifi(false)) {
-      loopTask();
-      WiFi.mode(WIFI_OFF);
-    } else {
-      //ESP.restart();
-      previousMillis = millis();
-    }
-    // setCpuFrequencyMhz(40); // CPU
+    setCpuFrequencyMhz(240);
+    loopTask();
+    setCpuFrequencyMhz(80);
   }
 
   static uint32_t scanTime = millis();
@@ -253,17 +250,22 @@ void touch_calibrate() {
 }
 
 void onWiFiEvent(WiFiEvent_t event) {
+  tft.setCursor(10, 20);
+
   switch (event) {
     case SYSTEM_EVENT_STA_DISCONNECTED:
       Serial.println("WiFi begin failed ");
       // try reconnect here (after delay???)
+      drawText("WiFi begin failed ");
       break;
     case SYSTEM_EVENT_STA_GOT_IP:
       Serial.println("WiFi begin succeeded ");
       // Connected successfully
+      drawText("WiFi begin succeeded ");
       break;
     default:
       Serial.println("WiFi default");
+      drawText("WiFi default ");
   }
 }
 
@@ -280,9 +282,10 @@ bool connectWifi(bool quiet) {
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
+    delay(200);
+
     previousMillis = millis();
 
-    delay(200);
     if (!quiet)
       tft.print(".");
 
@@ -302,21 +305,20 @@ void loopTask() {
   previousMillis = millis();
 
   readSensors();
-  sendDataToThingSpeak("api_key=" + apiKey + "&field1=" + String(Temperature, 1) + "&field2=" + String(Humidity, 1) + "&field3=" + String(TemperatureOutdoor, 1));
 
-  drawImage();
+  if (connectWifi(true))
+    sendDataToThingSpeak("api_key=" + apiKey + "&field1=" + String(Temperature, 1) + "&field2=" + String(Humidity, 1) + "&field3=" + String(TemperatureOutdoor, 1));
 
-  if (currentImage == 0)
-    currentImage = 1;
-  else if (currentImage == 1)
-    currentImage = 2;
-  else
-    currentImage = 0;
+  drawNextImage();
 
-  tft.setCursor(0, 180);
-  drawText("Temp: " + String(Temperature, 1) + "\367C", (Temperature >= 19 && Temperature <= 23) ? TFT_WHITE : TFT_RED);
-  drawText("Wilg:   " + String(Humidity, 1) + "%", (Humidity >= 35 && Humidity <= 60) ? TFT_WHITE : TFT_RED);
-  drawText("Zewn: " + String(TemperatureOutdoor, 1) + "\367C");
+  tft.setCursor(10, 230);
+  drawTextInLine(String(Temperature, 1) + "'C", (Temperature >= 19 && Temperature <= 23) ? TFT_WHITE : TFT_RED);
+  drawTextInLine(" | ", TFT_WHITE);
+  drawTextInLine(String(Humidity, 1) + "%", (Humidity >= 35 && Humidity <= 60) ? TFT_WHITE : TFT_RED);
+  //tft.setCursor(10, 230);
+  drawTextInLine(" | " + String(TemperatureOutdoor, 1) + "'C", (TemperatureOutdoor >= 10) ? TFT_WHITE : TFT_BLUE);
+
+  previousMillis = millis();
 }
 
 void turnOnLEDS() {
@@ -327,6 +329,8 @@ void turnOnLEDS() {
   digitalWrite(34, HIGH);
   delay(70);
   digitalWrite(34, LOW);
+
+  currentState = 1;
 }
 
 void turnOffLEDS() {
@@ -337,6 +341,8 @@ void turnOffLEDS() {
   digitalWrite(34, HIGH);
   delay(70);
   digitalWrite(34, LOW);
+
+  currentState = 0;
 }
 
 void drawText(String text) {
@@ -349,10 +355,24 @@ void drawText(String text, uint16_t color) {
   tft.println(text);
 }
 
-void drawImage() {
+void drawTextInLine(String text) {
+  tft.setTextColor(TFT_WHITE);
+  tft.print(text);
+}
+
+void drawTextInLine(String text, uint16_t color) {
+  tft.setTextColor(color);
+  tft.print(text);
+}
+
+void drawNextImage() {
   tft.setSwapBytes(true);
-  tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : currentImage == 1 ? image_witcher
-                                                                                   : image_bejb2);
+  //tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : currentImage == 1 ? image_witcher
+  //                                                                                 : image_bejb2);
+  //tft.pushImage(0, 0, 320, 240, image_bejb2);
+  tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : image_witcher);
+  currentImage++;
+  currentImage = currentImage % 2;
 }
 
 void readSensors() {
