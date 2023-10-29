@@ -367,10 +367,10 @@ void drawTextInLine(String text, uint16_t color) {
 
 void drawNextImage() {
   tft.setSwapBytes(true);
-  //tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : currentImage == 1 ? image_witcher
-  //                                                                                 : image_bejb2);
+  tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : currentImage == 1 ? image_witcher
+                                                                                   : image_bejb2);
   //tft.pushImage(0, 0, 320, 240, image_bejb2);
-  tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : image_witcher);
+  //tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : image_witcher);
   currentImage++;
   currentImage = currentImage % 2;
 }
