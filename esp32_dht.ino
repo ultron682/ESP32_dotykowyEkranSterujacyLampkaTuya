@@ -55,7 +55,7 @@ DallasTemperature sensors(&oneWire);
 unsigned long previousMillis = 0;
 
 short currentImage = 2;
-short currentState = 1;
+short lastReadStateUSB = 1;
 
 
 
@@ -89,10 +89,12 @@ void setup() {
 }
 
 void loop() {
-  if (digitalRead(33) == LOW && currentState == 0) {
+  if (digitalRead(33) == LOW && lastReadStateUSB == 0) {
     turnOnLEDS();
-  } else if (digitalRead(33) == HIGH && currentState == 1) {
+    lastReadStateUSB = 1;
+  } else if (digitalRead(33) == HIGH && lastReadStateUSB == 1) {
     turnOffLEDS();
+    lastReadStateUSB = 0;
   }
 
   if (millis() - previousMillis >= 60000) {
@@ -329,8 +331,6 @@ void turnOnLEDS() {
   digitalWrite(34, HIGH);
   delay(70);
   digitalWrite(34, LOW);
-
-  currentState = 1;
 }
 
 void turnOffLEDS() {
@@ -341,8 +341,6 @@ void turnOffLEDS() {
   digitalWrite(34, HIGH);
   delay(70);
   digitalWrite(34, LOW);
-
-  currentState = 0;
 }
 
 void drawText(String text) {
