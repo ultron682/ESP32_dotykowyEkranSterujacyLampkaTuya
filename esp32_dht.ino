@@ -14,8 +14,13 @@
 
 #include "esp32_dht_bmp.h"
 
-const String ssid = "Inez 2,4";
-const String password = "56964592";
+#include <ESPping.h>
+
+const String ssid = "AP-1";
+const String password = "152216100723";
+
+// const String ssid = "Inez 2,4";
+// const String password = "56964592";
 
 // const String ssid = "PIETRO 1";
 // const String password = "lublinaleksandrajaworowskiego14";
@@ -57,6 +62,9 @@ unsigned long previousMillis = 0;
 short currentImage = 2;
 short lastReadStateUSB = 1;
 
+IPAddress ipComputer(192, 168, 10, 153);  // The remote ip to ping
+
+
 
 
 void setup() {
@@ -88,13 +96,30 @@ void setup() {
   initButtons();
 }
 
+unsigned long previousMillisPing = 0;
+bool lastPing = false;
+
 void loop() {
-  if (digitalRead(33) == LOW && lastReadStateUSB == 0) {
-    turnOnLEDS();
-    lastReadStateUSB = 1;
-  } else if (digitalRead(33) == HIGH && lastReadStateUSB == 1) {
-    turnOffLEDS();
-    lastReadStateUSB = 0;
+  // if (digitalRead(33) == LOW && lastReadStateUSB == 0) {
+  //   turnOnLEDS();
+  //   lastReadStateUSB = 1;
+  // } else if (digitalRead(33) == HIGH && lastReadStateUSB == 1) {
+  //   turnOffLEDS();
+  //   lastReadStateUSB = 0;
+  // }
+
+  if (millis() - previousMillisPing >= 1000) {
+    previousMillisPing = millis();
+    bool currentPing = Ping.ping(ipComputer, 1);
+
+    if (currentPing == true && lastPing == true && lastReadStateUSB == 0) {
+      turnOnLEDS();
+      lastReadStateUSB = 1;
+    } else if (currentPing == false && lastPing == false && lastReadStateUSB == 1) {
+      turnOffLEDS();
+      lastReadStateUSB = 0;
+    }
+    lastPing = Ping.ping(ipComputer, 1);
   }
 
   if (millis() - previousMillis >= 60000) {
