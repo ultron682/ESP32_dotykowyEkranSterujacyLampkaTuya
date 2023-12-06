@@ -64,7 +64,7 @@ short lastReadStateUSB = 1;
 
 IPAddress ipComputer(192, 168, 10, 153);  // The remote ip to ping
 
-
+#define LED_BUILTIN 2
 
 
 void setup() {
@@ -103,7 +103,8 @@ void loop() {
   if (millis() - previousMillisPing >= 2000) {
     bool currentPing = Ping.ping(ipComputer, 1);
     previousMillisPing = millis();
-    
+    tft.fillRect(10, 10, 10, 10, (currentPing == true ? TFT_GREEN : TFT_RED));
+
     if (currentPing == true && lastPing == true && lastReadStateUSB == 0) {
       turnOnLEDS();
       lastReadStateUSB = 1;
