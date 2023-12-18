@@ -1,7 +1,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <WiFiClient.h>
-#include "DHT.h"
+// #include "DHT.h"
 
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -16,6 +16,9 @@
 
 #include <ESPping.h>
 
+#include <BLEDevice.h>
+
+
 // const String ssid = "AP-1";
 // const String password = "152216100723";
 
@@ -29,13 +32,14 @@ const char *serverName = "http://api.thingspeak.com/update";
 unsigned long myChannelNumber = 2058504;
 String apiKey = "3E55L1C2B988LHQJ";
 
-uint8_t DHTPin = 14;
-#define DHTTYPE DHT22
-DHT dht(DHTPin, DHTTYPE);
+// uint8_t DHTPin = 14;
+// #define DHTTYPE DHT22
+// DHT dht(DHTPin, DHTTYPE);
 
 float Temperature;
 float Humidity;
 float TemperatureOutdoor;
+
 
 TFT_eSPI tft = TFT_eSPI();
 #define CALIBRATION_FILE "/TouchCalData1"
@@ -64,6 +68,113 @@ IPAddress ipComputer(192, 168, 10, 153);  // The remote ip to ping
 #define LED_BUILTIN 2/////////////////////////
 
 
+
+
+
+
+
+
+
+BLEClient *pClient;
+
+BLEScan *pBLEScan;
+
+#define SCAN_TIME 10 // seconds
+
+bool connected = false;
+
+#undef CONFIG_BTC_TASK_STACK_SIZE
+#define CONFIG_BTC_TASK_STACK_SIZE 32768
+
+// The remote service we wish to connect to.
+static BLEUUID serviceUUID("ebe0ccb0-7a0a-4b0c-8a1a-6ff2997da3a6");
+// The characteristic of the remote service we are interested in.
+static BLEUUID charUUID("ebe0ccc1-7a0a-4b0c-8a1a-6ff2997da3a6");
+
+class MyClientCallback : public BLEClientCallbacks
+{
+  void onConnect(BLEClient *pclient)
+  {
+    connected = true;
+    Serial.printf(" * Connected %s\n", pclient->getPeerAddress().toString().c_str());
+  }
+
+  void onDisconnect(BLEClient *pclient)
+  {
+    connected = false;
+    Serial.printf(" * Disconnected %s\n", pclient->getPeerAddress().toString().c_str());
+  }
+};
+
+static void notifyCallback(
+    BLERemoteCharacteristic *pBLERemoteCharacteristic,
+    uint8_t *pData,
+    size_t length,
+    bool isNotify)
+{
+  float temp;
+  float humi;
+  float voltage;
+  Serial.print(" + Notify callback for characteristic ");
+  Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
+  temp = (pData[0] | (pData[1] << 8)) * 0.01; //little endian
+  humi = pData[2];
+  voltage = (pData[3] | (pData[4] << 8)) * 0.001; //little endian
+  Serial.printf("temp = %.1f C ; humidity = %.1f %% ; voltage = %.3f V\n", temp, humi, voltage);
+  pClient->disconnect();
+}
+
+void registerNotification()
+{
+  if (!connected)
+  {
+    Serial.println(" - Premature disconnection");
+    return;
+  }
+  // Obtain a reference to the service we are after in the remote BLE server.
+  BLERemoteService *pRemoteService = pClient->getService(serviceUUID);
+  if (pRemoteService == nullptr)
+  {
+    Serial.print(" - Failed to find our service UUID: ");
+    Serial.println(serviceUUID.toString().c_str());
+    pClient->disconnect();
+  }
+  Serial.println(" + Found our service");
+
+  // Obtain a reference to the characteristic in the service of the remote BLE server.
+  BLERemoteCharacteristic *pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
+  if (pRemoteCharacteristic == nullptr)
+  {
+    Serial.print(" - Failed to find our characteristic UUID: ");
+    Serial.println(charUUID.toString().c_str());
+    pClient->disconnect();
+  }
+  Serial.println(" + Found our characteristic");
+  pRemoteCharacteristic->registerForNotify(notifyCallback);
+}
+
+void createBleClientWithCallbacks()
+{
+  pClient = BLEDevice::createClient();
+  pClient->setClientCallbacks(new MyClientCallback());
+}
+
+void connectSensor(BLEAddress htSensorAddress)
+{
+  pClient->connect(htSensorAddress);
+}
+
+
+
+
+
+
+
+
+
+
+
+
 void setup() {
   Serial.begin(115200);
   Serial.print("MOSI: ");
@@ -75,13 +186,27 @@ void setup() {
   Serial.print("SS: ");
   Serial.println(SS);  
 
+ 
+delay(500);
+
+  BLEDevice::init("ESP32");
+  createBleClientWithCallbacks();
+
+  pBLEScan = BLEDevice::getScan(); //create new scan
+  pBLEScan->setActiveScan(true);   //active scan uses more power, but get results faster
+  pBLEScan->setInterval(0x50);
+  pBLEScan->setWindow(0x30);
+
+
+
+
 
   pinMode(14, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
 
   sensors.begin();
-  pinMode(DHTPin, INPUT);
-  dht.begin();
+  //pinMode(DHTPin, INPUT);
+  //dht.begin();
 
   tft.begin();
   tft.setRotation(3);
@@ -105,6 +230,13 @@ void setup() {
 
 unsigned long previousMillisPing = 0;
 bool lastPing = false;
+
+
+std::string addresses[10];
+
+int addressCount = 0;
+
+
 
 void loop() {
   if (millis() - previousMillisPing >= 2000) {
@@ -134,26 +266,26 @@ void loop() {
     setCpuFrequencyMhz(80);
   }
 
-  // static uint32_t scanTime = millis();
-  // uint16_t t_x = 9999, t_y = 9999;  // To store the touch coordinates
+  static uint32_t scanTime = millis();
+  uint16_t t_x = 9999, t_y = 9999;  // To store the touch coordinates
 
-  // // Scan keys every 50ms at most
-  // if (millis() - scanTime >= 50) {
-  //   // Pressed will be set true if there is a valid touch on the screen
-  //   bool pressed = tft.getTouch(&t_x, &t_y);
-  //   scanTime = millis();
-  //   for (uint8_t b = 0; b < buttonCount; b++) {
-  //     if (pressed) {
-  //       if (btn[b]->contains(t_x, t_y)) {
-  //         btn[b]->press(true);
-  //         btn[b]->pressAction();
-  //       }
-  //     } else {
-  //       btn[b]->press(false);
-  //       btn[b]->releaseAction();
-  //     }
-  //   }
-  // }
+  // Scan keys every 50ms at most
+  if (millis() - scanTime >= 50) {
+    // Pressed will be set true if there is a valid touch on the screen
+    bool pressed = tft.getTouch(&t_x, &t_y);
+    scanTime = millis();
+    for (uint8_t b = 0; b < buttonCount; b++) {
+      if (pressed) {
+        if (btn[b]->contains(t_x, t_y)) {
+          btn[b]->press(true);
+          btn[b]->pressAction();
+        }
+      } else {
+        btn[b]->press(false);
+        btn[b]->releaseAction();
+      }
+    }
+  }
 }
 
 void btnL_pressAction(void) {
@@ -337,7 +469,28 @@ bool connectWifi(bool quiet) {
 void loopTask() {
   previousMillis = millis();
 
+
+
+
   readSensors();
+
+
+
+
+
+std::string curAddr = "a4:c1:38:61:34:fd";
+
+    Serial.printf("+ Connect : %s\n", curAddr);
+    connectSensor(BLEAddress(curAddr));
+    registerNotification();
+    while (connected)
+    {
+      delay(10);
+    };
+
+
+
+
 
   if (connectWifi(true))
     sendDataToThingSpeak("api_key=" + apiKey + "&field1=" + String(Temperature, 1) + "&field2=" + String(Humidity, 1) + "&field3=" + String(TemperatureOutdoor, 1));
@@ -398,15 +551,15 @@ void drawNextImage() {
   tft.setSwapBytes(true);
   // tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : currentImage == 1 ? image_witcher
   //                                                                                  : image_bejb2);
-  tft.pushImage(0, 0, 320, 240, image_bejb2);
+  //tft.pushImage(0, 0, 320, 240, image_bejb2);
   //tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : image_witcher);
   currentImage++;
   currentImage = currentImage % 2;
 }
 
 void readSensors() {
-  Temperature = dht.readTemperature();
-  Humidity = dht.readHumidity();
+  //Temperature = dht.readTemperature();
+  //Humidity = dht.readHumidity();
 
   sensors.requestTemperatures();
   TemperatureOutdoor = sensors.getTempCByIndex(0);
