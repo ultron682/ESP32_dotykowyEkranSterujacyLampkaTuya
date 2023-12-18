@@ -29,16 +29,13 @@ const char *serverName = "http://api.thingspeak.com/update";
 unsigned long myChannelNumber = 2058504;
 String apiKey = "3E55L1C2B988LHQJ";
 
-uint8_t DHTPin = 6;
+uint8_t DHTPin = 14;
 #define DHTTYPE DHT22
 DHT dht(DHTPin, DHTTYPE);
 
 float Temperature;
 float Humidity;
 float TemperatureOutdoor;
-
-#define TFT_RST 4
-#define TFT_DC 5
 
 TFT_eSPI tft = TFT_eSPI();
 #define CALIBRATION_FILE "/TouchCalData1"
@@ -53,7 +50,7 @@ ButtonWidget btnR = ButtonWidget(&tft);
 ButtonWidget *btn[] = { &btnL, &btnR };
 uint8_t buttonCount = sizeof(btn) / sizeof(btn[0]);
 
-uint8_t oneWireBus = 10;
+uint8_t oneWireBus = 15;
 OneWire oneWire(oneWireBus);
 DallasTemperature sensors(&oneWire);
 
@@ -64,12 +61,22 @@ short lastReadStateUSB = 1;
 
 IPAddress ipComputer(192, 168, 10, 153);  // The remote ip to ping
 
-#define LED_BUILTIN 2
+#define LED_BUILTIN 2/////////////////////////
 
 
 void setup() {
-  pinMode(33, INPUT_PULLUP);
-  pinMode(34, OUTPUT);
+  Serial.begin(115200);
+  Serial.print("MOSI: ");
+  Serial.println(MOSI);
+  Serial.print("MISO: ");
+  Serial.println(MISO);
+  Serial.print("SCK: ");
+  Serial.println(SCK);
+  Serial.print("SS: ");
+  Serial.println(SS);  
+
+
+  pinMode(14, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
 
   sensors.begin();
@@ -127,26 +134,26 @@ void loop() {
     setCpuFrequencyMhz(80);
   }
 
-  static uint32_t scanTime = millis();
-  uint16_t t_x = 9999, t_y = 9999;  // To store the touch coordinates
+  // static uint32_t scanTime = millis();
+  // uint16_t t_x = 9999, t_y = 9999;  // To store the touch coordinates
 
-  // Scan keys every 50ms at most
-  if (millis() - scanTime >= 50) {
-    // Pressed will be set true if there is a valid touch on the screen
-    bool pressed = tft.getTouch(&t_x, &t_y);
-    scanTime = millis();
-    for (uint8_t b = 0; b < buttonCount; b++) {
-      if (pressed) {
-        if (btn[b]->contains(t_x, t_y)) {
-          btn[b]->press(true);
-          btn[b]->pressAction();
-        }
-      } else {
-        btn[b]->press(false);
-        btn[b]->releaseAction();
-      }
-    }
-  }
+  // // Scan keys every 50ms at most
+  // if (millis() - scanTime >= 50) {
+  //   // Pressed will be set true if there is a valid touch on the screen
+  //   bool pressed = tft.getTouch(&t_x, &t_y);
+  //   scanTime = millis();
+  //   for (uint8_t b = 0; b < buttonCount; b++) {
+  //     if (pressed) {
+  //       if (btn[b]->contains(t_x, t_y)) {
+  //         btn[b]->press(true);
+  //         btn[b]->pressAction();
+  //       }
+  //     } else {
+  //       btn[b]->press(false);
+  //       btn[b]->releaseAction();
+  //     }
+  //   }
+  // }
 }
 
 void btnL_pressAction(void) {
@@ -348,23 +355,23 @@ void loopTask() {
 }
 
 void turnOnLEDS() {
-  digitalWrite(34, HIGH);
+  digitalWrite(14, HIGH);
   delay(70);
-  digitalWrite(34, LOW);
+  digitalWrite(14, LOW);
   delay(350);
-  digitalWrite(34, HIGH);
+  digitalWrite(14, HIGH);
   delay(70);
-  digitalWrite(34, LOW);
+  digitalWrite(14, LOW);
 }
 
 void turnOffLEDS() {
-  digitalWrite(34, HIGH);
+  digitalWrite(14, HIGH);
   delay(70);
-  digitalWrite(34, LOW);
+  digitalWrite(14, LOW);
   delay(100);
-  digitalWrite(34, HIGH);
+  digitalWrite(14, HIGH);
   delay(70);
-  digitalWrite(34, LOW);
+  digitalWrite(14, LOW);
 }
 
 void drawText(String text) {
@@ -389,9 +396,9 @@ void drawTextInLine(String text, uint16_t color) {
 
 void drawNextImage() {
   tft.setSwapBytes(true);
-  tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : currentImage == 1 ? image_witcher
-                                                                                   : image_bejb2);
-  //tft.pushImage(0, 0, 320, 240, image_bejb2);
+  // tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : currentImage == 1 ? image_witcher
+  //                                                                                  : image_bejb2);
+  tft.pushImage(0, 0, 320, 240, image_bejb2);
   //tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : image_witcher);
   currentImage++;
   currentImage = currentImage % 2;
