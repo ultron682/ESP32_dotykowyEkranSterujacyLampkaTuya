@@ -134,26 +134,26 @@ void loop() {
     setCpuFrequencyMhz(80);
   }
 
-  // static uint32_t scanTime = millis();
-  // uint16_t t_x = 9999, t_y = 9999;  // To store the touch coordinates
+  static uint32_t scanTime = millis();
+  uint16_t t_x = 9999, t_y = 9999;  // To store the touch coordinates
 
-  // // Scan keys every 50ms at most
-  // if (millis() - scanTime >= 50) {
-  //   // Pressed will be set true if there is a valid touch on the screen
-  //   bool pressed = tft.getTouch(&t_x, &t_y);
-  //   scanTime = millis();
-  //   for (uint8_t b = 0; b < buttonCount; b++) {
-  //     if (pressed) {
-  //       if (btn[b]->contains(t_x, t_y)) {
-  //         btn[b]->press(true);
-  //         btn[b]->pressAction();
-  //       }
-  //     } else {
-  //       btn[b]->press(false);
-  //       btn[b]->releaseAction();
-  //     }
-  //   }
-  // }
+  // Scan keys every 50ms at most
+  if (millis() - scanTime >= 50) {
+    // Pressed will be set true if there is a valid touch on the screen
+    bool pressed = tft.getTouch(&t_x, &t_y);
+    scanTime = millis();
+    for (uint8_t b = 0; b < buttonCount; b++) {
+      if (pressed) {
+        if (btn[b]->contains(t_x, t_y)) {
+          btn[b]->press(true);
+          btn[b]->pressAction();
+        }
+      } else {
+        btn[b]->press(false);
+        btn[b]->releaseAction();
+      }
+    }
+  }
 }
 
 void btnL_pressAction(void) {
@@ -398,8 +398,8 @@ void drawNextImage() {
   tft.setSwapBytes(true);
   // tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : currentImage == 1 ? image_witcher
   //                                                                                  : image_bejb2);
-  tft.pushImage(0, 0, 320, 240, image_bejb2);
-  //tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : image_witcher);
+  //tft.pushImage(0, 0, 320, 240, image_bejb2);
+  tft.pushImage(0, 0, 320, 240, currentImage == 0 ? image_bejb : image_witcher);
   currentImage++;
   currentImage = currentImage % 2;
 }

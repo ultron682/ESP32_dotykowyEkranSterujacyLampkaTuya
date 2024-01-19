@@ -204,7 +204,7 @@
 #define sFF11 "Mono oblique 18"
 #define sFF12 "Mono oblique 24"
 
-#define sFF13 "Mono bold oblique 9"
+#define sFF13 "Mono bold oblique c:\Users\EredinHyper\Documents\Arduino\esp32_dht\esp32_dht.ino9"
 #define sFF14 "Mono bold oblique 12"
 #define sFF15 "Mono bold oblique 18"
 #define sFF16 "Mono bold oblique 24" // Full text line is too big for 480 pixel wide screen
